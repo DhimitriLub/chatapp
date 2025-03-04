@@ -1,0 +1,19 @@
+{
+  "dependencies": {
+    "browser-image-compression": "^2.0.2",
+    "canvas-confetti": "^1.9.3",
+    "lodash": "^4.17.21"
+  },
+  "name": "chatapp",
+  "version": "1.0.0",
+  "main": "tailwind.config.js",
+  "devDependencies": {},
+  "scripts": {
+    "build": "cd backend && npm install && cd ../frontend && npm install && npm run build",
+    "start": "npm run start --prefix backend"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
