@@ -1,10 +1,11 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { Image, X, Send } from "lucide-react";
-import imageCompression from 'browser-image-compression';
 import GifPicker from "./GifPicker";
 import toast from "react-hot-toast";
 import ConfettiButton from "./ConfettiButton";
+import { compressImage } from "../utils/imageUtils";
+import { axiosInstance } from "../../../lib/axios";
 
 // Custom GIF icon component
 const GifIcon = () => (
@@ -24,37 +25,12 @@ const GifIcon = () => (
   </svg>
 );
 
-const compressImage = async (file) => {
-  const options = {
-    maxSizeMB: 1,
-    maxWidthOrHeight: 1024,
-    useWebWorker: true
-  };
-  
-  try {
-    const compressedFile = await imageCompression(file, options);
-    return await convertToBase64(compressedFile);
-  } catch (error) {
-    console.error("Error compressing image:", error);
-    throw error;
-  }
-};
-
-const convertToBase64 = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = (error) => reject(error);
-  });
-};
-
-const MessageInput = () => {
-  const [text, setText] = useState("");
+const MessageInput = ({ messageToEdit, setMessageToEdit, onMessageSent }) => {
+  const [text, setText] = useState(messageToEdit?.text || "");
   const [imagePreview, setImagePreview] = useState(null);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const fileInputRef = useRef(null);
-  const { sendMessage } = useChatStore();
+  const { selectedUser } = useChatStore();
 
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
@@ -84,27 +60,47 @@ const MessageInput = () => {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if(!text.trim() && !imagePreview) return;
+    if(!selectedUser) return;
     
     try {
-      await sendMessage({
-        text: text.trim(),
-        image: imagePreview,
-      });
-      //Clear form
+      if (messageToEdit) {
+        await axiosInstance.put(`/messages/${messageToEdit._id}`, {
+          action: 'edit',
+          text: text.trim()
+        });
+        setMessageToEdit(null);
+      } else {
+        await axiosInstance.post('/messages', {
+          text: text.trim(),
+          image: imagePreview,
+          receiverId: selectedUser._id
+        });
+      }
+
+      // Clear form
       setText("");
       setImagePreview(null);
       setShowGifPicker(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
- 
+
+      // Refresh messages
+      onMessageSent();
     } catch (error) {
-      console.error("Failed to send message", error);
+      console.error("Failed to send message:", error);
+      if (error.response?.data?.code === "ERRORS.IMAGE_UPLOAD_DISABLED") {
+        toast.error("Image upload is currently disabled. Please send text only.");
+      } else if (error.response?.data?.code === "ERRORS.IMAGE_UPLOAD_FAILED") {
+        toast.error("Failed to upload image. Please try again or send without an image.");
+      } else {
+        toast.error(error.response?.data?.message || "Error sending message");
+      }
     }
   };
 
   return (
     <form onSubmit={handleSendMessage} className="p-4 border-t border-base-300">
       {/* Preview */}
-      {imagePreview && (
+      {imagePreview && !messageToEdit && (
         <div className="mb-4 relative w-fit">
           <img
             src={imagePreview}
@@ -128,7 +124,7 @@ const MessageInput = () => {
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Type a message..."
+            placeholder={messageToEdit ? "Edit message..." : "Type a message..."}
             className="flex-1 bg-transparent border-none outline-none"
           />
 
@@ -172,7 +168,23 @@ const MessageInput = () => {
         >
           <Send className="w-5 h-5" />
         </button>
+
+        {messageToEdit && (
+          <button
+            type="button"
+            onClick={() => setMessageToEdit(null)}
+            className="btn btn-circle btn-ghost btn-sm"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
+
+      {showGifPicker && !messageToEdit && (
+        <div className="absolute bottom-20 left-4">
+          <GifPicker onSelect={handleGifSelect} />
+        </div>
+      )}
     </form>
   );
 };

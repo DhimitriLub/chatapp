@@ -1,21 +1,25 @@
 import React, { useEffect, useState } from 'react'
-import { useChatStore } from '../store/useChatStore';
+import { useChatStore } from '../features/chat/store/useChatStore';
 import SidebarSkeleton from './skeletons/SidebarSkeleton';
 import { Users, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../store/userAuthStore';
 
 const Sidebar = () => {
-  const { getUsers, users, isUsersLoading, setSelectedUser, selectedUser, unreadCounts, getUnreadCounts } = useChatStore();
-  const { onlineUsers } = useAuthStore();
+  const { getUsers, users, isUsersLoading, setSelectedUser, selectedUser, unreadCounts } = useChatStore();
+  const { onlineUsers = [], authUser } = useAuthStore();
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
 
-  useEffect(() => {
-    getUsers();
-    getUnreadCounts();
-  }, [getUsers, getUnreadCounts]);
+  // Convert online user IDs to strings for comparison
+  const onlineUserIds = onlineUsers.map(id => String(id));
+  
+  // Filter out the current user and apply online filter if needed
+  const filteredUsers = users
+    .filter(user => user._id !== authUser?._id)
+    .filter(user => !showOnlineOnly || onlineUserIds.includes(String(user._id)));
 
-  const filteredUsers = showOnlineOnly ? users.filter((user) => onlineUsers.includes(user._id)) : users;
+  // Count online users (excluding current user)
+  const onlineCount = onlineUsers.filter(id => id !== authUser?._id).length;
 
   if (isUsersLoading) return <SidebarSkeleton />;
   
@@ -30,7 +34,7 @@ const Sidebar = () => {
       >
         <Users className="size-6" />
         <span className={`font-medium transition-opacity duration-200 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
-          Contacts
+          Contacts ({users.length - 1})
         </span>
         <ChevronRight className={`ml-auto size-5 transition-transform duration-300 
           ${isExpanded ? 'rotate-0' : 'rotate-180'}`} 
@@ -49,7 +53,7 @@ const Sidebar = () => {
             />
             <span className="text-sm">Show online only</span>
             <span className="text-xs text-base-content/60 ml-auto">
-              ({onlineUsers.length - 1} online)
+              ({onlineCount} online)
             </span>
           </label>
         </div>
@@ -70,7 +74,7 @@ const Sidebar = () => {
                 alt={user.username}
                 className="size-12 object-cover rounded-full"
               />
-              {onlineUsers.includes(user._id) && (
+              {onlineUserIds.includes(String(user._id)) && (
                 <span className="absolute bottom-0 right-0 size-3 bg-green-500 rounded-full ring-2 ring-base-100" />
               )}
               {/* Unread Message Badge */}
@@ -83,9 +87,9 @@ const Sidebar = () => {
 
             {isExpanded && (
               <div className="text-left min-w-0 flex-1">
-                <div className="font-medium truncate">{user.fullName}</div>
+                <div className="font-medium truncate">{user.fullName || user.username}</div>
                 <div className="text-sm text-base-content/60">
-                  {onlineUsers.includes(user._id) ? "Online" : "Offline"}
+                  {onlineUserIds.includes(String(user._id)) ? "Online" : "Offline"}
                 </div>
               </div>
             )}
@@ -96,4 +100,4 @@ const Sidebar = () => {
   );
 };
 
-export default Sidebar
+export default Sidebar;

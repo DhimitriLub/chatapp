@@ -1,11 +1,11 @@
-import Navbar from "./components/Navbar";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import { useState, useEffect } from "react";
 import { Loader, Menu } from "lucide-react";
-import { Toaster } from "react-hot-toast";
 import { useAuthStore } from "./store/userAuthStore";
 import { useThemeStore } from "./store/useThemeStore";
-import MainSidebar from "./components/MainSidebar";
+import MainSidebar from "./components/shared/MainSidebar";
+
 
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
