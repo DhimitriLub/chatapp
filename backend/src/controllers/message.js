@@ -1,29 +1,9 @@
-import express from "express";
-import { protectRoute } from "../middleware/protectRoute.js";
 import Message from "../models/message.model.js";
-import User from "../models/user.model.js";
+import mongoose from "mongoose";
 import cloudinary, { isEnabled as isCloudinaryEnabled } from "../config/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
-import mongoose from "mongoose";
 
-const router = express.Router();
-
-// Get users for sidebar
-router.get("/users", protectRoute, async (req, res) => {
-    try {
-        const loggedInUserId = req.user._id;
-        const users = await User.find({ _id: { $ne: loggedInUserId } })
-            .select("-password")
-            .sort({ username: 1 });
-        return res.status(200).send({ ok: true, data: users });
-    } catch (error) {
-        console.error("Error in get users:", error);
-        return res.status(500).send({ ok: false, code: "ERRORS.SERVER_ERROR", error: error.message });
-    }
-});
-
-// Get all messages with a user
-router.get("/:id", protectRoute, async (req, res) => {
+export const getMessages = async (req, res) => {
     try {
         const { id: receiverId } = req.params;
         const senderId = req.user._id;
@@ -69,10 +49,9 @@ router.get("/:id", protectRoute, async (req, res) => {
         console.error("Error in get messages:", error);
         return res.status(500).send({ ok: false, code: "ERRORS.SERVER_ERROR", error: error.message });
     }
-});
+};
 
-// Send a message
-router.post("/", protectRoute, async (req, res) => {
+export const sendMessage = async (req, res) => {
     try {
         const { text, image, receiverId } = req.body;
         const senderId = req.user._id;
@@ -132,10 +111,9 @@ router.post("/", protectRoute, async (req, res) => {
         console.error("Error in send message:", error);
         return res.status(500).send({ ok: false, code: "ERRORS.SERVER_ERROR", error: error.message });
     }
-});
+};
 
-// Update a message (mark as seen or edit)
-router.put("/:id", protectRoute, async (req, res) => {
+export const updateMessage = async (req, res) => {
     try {
         const { id } = req.params;
         const { action, text } = req.body;
@@ -213,10 +191,9 @@ router.put("/:id", protectRoute, async (req, res) => {
         console.error("Error in update message:", error);
         return res.status(500).send({ ok: false, code: "ERRORS.SERVER_ERROR", error: error.message });
     }
-});
+};
 
-// Get unread message counts
-router.get("/unread/counts", protectRoute, async (req, res) => {
+export const getUnreadCounts = async (req, res) => {
     try {
         const userId = req.user._id;
 
@@ -245,44 +222,4 @@ router.get("/unread/counts", protectRoute, async (req, res) => {
         console.error("Error in get unread counts:", error);
         return res.status(500).send({ ok: false, code: "ERRORS.SERVER_ERROR", error: error.message });
     }
-});
-
-// Get all users with messages
-router.get("/users", protectRoute, async (req, res) => {
-    try {
-        const userId = req.user._id;
-
-        const users = await Message.aggregate([
-            {
-                $match: {
-                    $or: [
-                        { senderId: userId },
-                        { receiverId: userId }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        $cond: [
-                            { $eq: ["$senderId", userId] },
-                            "$receiverId",
-                            "$senderId"
-                        ]
-                    },
-                    lastMessage: { $last: "$$ROOT" }
-                }
-            },
-            {
-                $sort: { "lastMessage.createdAt": -1 }
-            }
-        ]);
-
-        return res.status(200).send({ ok: true, data: users });
-    } catch (error) {
-        console.error("Error in get users with messages:", error);
-        return res.status(500).send({ ok: false, code: "ERRORS.SERVER_ERROR", error: error.message });
-    }
-});
-
-export default router;
+}; 

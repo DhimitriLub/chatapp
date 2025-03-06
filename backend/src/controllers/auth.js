@@ -1,15 +1,9 @@
-import express from "express";
-import { protectRoute } from "../middleware/protectRoute.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../utils/token.js";
-import { handleUpload } from '../middleware/uploadMiddleware.js';
 import { uploadImage } from '../utils/cloudinary.js';
 
-const router = express.Router();
-
-// Signup route
-router.post("/signup", async (req, res) => {
+export const signup = async (req, res) => {
     try {
         const { username, email, password, confirmPassword } = req.body;
 
@@ -77,10 +71,9 @@ router.post("/signup", async (req, res) => {
             error: error.message 
         });
     }
-});
+};
 
-// Login route
-router.post("/login", async (req, res) => {
+export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
@@ -130,10 +123,9 @@ router.post("/login", async (req, res) => {
             error: error.message 
         });
     }
-});
+};
 
-// Logout route
-router.post("/logout", async (req, res) => {
+export const logout = async (req, res) => {
     try {
         res.cookie("jwt", "", { maxAge: 0 });
         return res.status(200).send({ ok: true });
@@ -145,10 +137,9 @@ router.post("/logout", async (req, res) => {
             error: error.message 
         });
     }
-});
+};
 
-// Check auth status
-router.get("/check", protectRoute, async (req, res) => {
+export const checkAuth = async (req, res) => {
     try {
         return res.status(200).send({
             ok: true,
@@ -167,53 +158,4 @@ router.get("/check", protectRoute, async (req, res) => {
             error: error.message 
         });
     }
-});
-
-// Update profile
-router.put("/update-profile", protectRoute, handleUpload, async (req, res) => {
-    try {
-        const userId = req.user._id;
-
-        // Handle profile picture upload
-        if (req.file) {
-            // Convert buffer to base64
-            const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-            
-            // Upload to cloudinary
-            const imageUrl = await uploadImage(base64Image);
-
-            // Update user with new profile picture
-            const updatedUser = await User.findByIdAndUpdate(
-                userId,
-                { profilePic: imageUrl },
-                { new: true }
-            ).select('-password');
-
-            return res.status(200).json({
-                ok: true,
-                data: updatedUser
-            });
-        }
-
-        // Handle other profile updates
-        const updates = req.body;
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            updates,
-            { new: true }
-        ).select('-password');
-
-        res.status(200).json({
-            ok: true,
-            data: updatedUser
-        });
-    } catch (error) {
-        console.error('Error updating profile:', error);
-        res.status(500).json({
-            ok: false,
-            error: error.message || 'Error updating profile'
-        });
-    }
-});
-
-export default router;
+}; 
